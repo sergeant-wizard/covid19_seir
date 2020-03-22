@@ -106,6 +106,8 @@ def plot(params):
     ax = observed.plot.line(style='o', label='observed', ax=ax)
     ax.legend()
     ax.set_yscale('log')
+    ax.set_xlabel('date')
+    ax.set_ylabel('infected')
     matplotlib.pyplot.tight_layout()
     matplotlib.pyplot.savefig('out.png')
 
