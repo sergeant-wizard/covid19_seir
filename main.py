@@ -75,7 +75,7 @@ def objective(trial):
 
 def fit():
     study = optuna.create_study(sampler=optuna.samplers.TPESampler(seed=0))
-    study.optimize(objective, n_trials=256)
+    study.optimize(objective, n_trials=128)
     return study.best_params
 
 
@@ -84,11 +84,12 @@ def plot(params):
         I_observed,
         index=pandas.date_range('2020-03-04', periods=fit_days, freq='D'),
     )
-    predict_duration = 120
+    predict_duration = 60
     prediction = pandas.Series(
         list(StateIterator(days=predict_duration, **params)),
         index=pandas.date_range('2020-03-04', periods=predict_duration, freq='D'),
     )
+    print(f'infected population: {int(prediction[-1])}')
     seaborn.set()
     ax = observed.plot.line(style='o', label='observed')
     prediction.plot.line(label='prediction')
