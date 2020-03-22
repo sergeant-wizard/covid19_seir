@@ -1,3 +1,5 @@
+import multiprocessing
+
 import matplotlib.pyplot
 import numpy
 import optuna
@@ -67,15 +69,15 @@ def squared_error(alpha, beta, gamma) -> float:
 
 
 def objective(trial):
-    alpha = trial.suggest_loguniform('alpha', 1E-6, 1E2)
-    beta = trial.suggest_loguniform('beta', 1E-2, 1E4)
-    gamma = trial.suggest_loguniform('gamma', 1E-6, 1E2)
+    alpha = trial.suggest_loguniform('alpha', 1E-7, 1E-2)
+    beta = trial.suggest_loguniform('beta', 1E-1, 1E6)
+    gamma = trial.suggest_loguniform('gamma', 1E-9, 1E-2)
     return squared_error(alpha, beta, gamma)
 
 
-def fit():
-    study = optuna.create_study(sampler=optuna.samplers.TPESampler(seed=0))
-    study.optimize(objective, n_trials=128)
+def fit(seed):
+    study = optuna.create_study(sampler=optuna.samplers.TPESampler(seed=seed))
+    study.optimize(objective, n_trials=512)
     return study.best_params
 
 
@@ -84,15 +86,24 @@ def plot(params):
         I_observed,
         index=pandas.date_range('2020-03-04', periods=fit_days, freq='D'),
     )
-    predict_duration = 60
-    prediction = pandas.Series(
-        list(StateIterator(days=predict_duration, **params)),
-        index=pandas.date_range('2020-03-04', periods=predict_duration, freq='D'),
+    predict_duration = 90
+    predictions = [
+        pandas.Series(
+            list(StateIterator(days=predict_duration, **param)),
+            index=pandas.date_range('2020-03-04', periods=predict_duration, freq='D'),
+        )
+        for param in params
+    ]
+    predictions = filter(
+        lambda x: not x.isna().any() and (x < N0).all(),
+        predictions
     )
-    print(f'infected population: {int(prediction[-1])}')
     seaborn.set()
-    ax = observed.plot.line(style='o', label='observed')
-    prediction.plot.line(label='prediction')
+    ax = seaborn.lineplot(
+        data=pandas.concat(predictions),
+        label='predictions',
+    )
+    ax = observed.plot.line(style='o', label='observed', ax=ax)
     ax.legend()
     ax.set_yscale('log')
     matplotlib.pyplot.tight_layout()
@@ -100,5 +111,9 @@ def plot(params):
 
 
 if __name__ == '__main__':
-    params = fit()
+    pool = multiprocessing.Pool(8)
+    params = pool.map(
+        fit,
+        range(32),
+    )
     plot(params)
