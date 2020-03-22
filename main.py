@@ -40,6 +40,9 @@ class State:
         self.I += dI
         self.R += dR
 
+        self.S = max(0, min(N0, self.S))
+        self.I = max(0, min(N0, self.I))
+
     def __list__(self):
         return (self.S, self.E, self.I, self.R)
 
@@ -77,7 +80,7 @@ def objective(trial):
 
 def fit(seed):
     study = optuna.create_study(sampler=optuna.samplers.TPESampler(seed=seed))
-    study.optimize(objective, n_trials=512)
+    study.optimize(objective, n_trials=256)
     return study.best_params
 
 
@@ -94,14 +97,12 @@ def plot(params):
         )
         for param in params
     ]
-    predictions = filter(
-        lambda x: not x.isna().any() and (x < N0).all(),
-        predictions
-    )
     seaborn.set()
+    ax = None
     ax = seaborn.lineplot(
         data=pandas.concat(predictions),
-        label='predictions',
+        label='prediction',
+        ax=ax,
     )
     ax = observed.plot.line(style='o', label='observed', ax=ax)
     ax.legend()
@@ -116,6 +117,6 @@ if __name__ == '__main__':
     pool = multiprocessing.Pool(8)
     params = pool.map(
         fit,
-        range(32),
+        range(64),
     )
     plot(params)
